@@ -915,7 +915,8 @@ $(function() {
         template: {
           element_id: "overlay-ui-template",
           viewer_insert_class: "overlay-viewer-display"
-        }
+        },
+        views: ["xspace", [0.6427, 0.7662, 0], "zspace"]
       },
       complete: function() {
         loading_div.hide();

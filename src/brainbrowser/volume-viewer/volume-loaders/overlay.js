@@ -37,6 +37,97 @@
   var VolumeViewer = BrainBrowser.VolumeViewer;
   var image_creation_context = document.createElement("canvas").getContext("2d");
 
+  function  setObliqueAxis(volume, voxel_perp) {
+      var     max_value, len, sign;
+      var     len_x_axis, len_y_axis, factor;
+      var     used_x_axis = [0, 0, 0];
+      var     used_y_axis = [0, 0, 0];
+      var     separations = [0, 0, 0];
+      var     perp = [0, 0, 0];
+      var     x_index, y_index;
+      var     c, max_axis;
+
+      separations[0] = volume.header.xspace.step;
+      separations[1] = volume.header.yspace.step;
+      separations[2] = volume.header.zspace.step;
+
+      for (c = 0; c < 3; c++)
+          perp[c] = voxel_perp[c] * Math.abs(separations[c]);
+
+      max_value = Math.abs(perp[0]);
+      max_axis = 0;
+      for (c = 1; c < 3; c++) {
+          if (Math.abs(perp[c]) > max_value ) {
+              max_value = Math.abs(perp[c]);
+              max_axis = c;
+          }
+      }
+
+      switch( max_axis )
+      {
+      case 0: x_index = 1;   y_index = 2;  break;
+      case 1: x_index = 0;   y_index = 2;  break;
+      case 2: x_index = 0;   y_index = 1;  break;
+      }
+
+      used_x_axis[0] = 0.0;
+      used_x_axis[1] = 0.0;
+      used_x_axis[2] = 0.0;
+
+      if( separations[x_index] < 0.0 )
+          used_x_axis[x_index] = -1.0;
+      else
+          used_x_axis[x_index] = 1.0;
+
+      len = perp[0] * perp[0] + perp[1] * perp[1] + perp[2] * perp[2];
+      if( len == 0.0 )
+          return;
+
+      factor = used_x_axis[x_index] * perp[x_index] / len;
+
+      for (c = 0; c < 3; c++)
+          used_x_axis[c] -= factor * perp[c];
+
+      used_y_axis[0] = perp[1] * used_x_axis[2] - used_x_axis[1] * perp[2];
+      used_y_axis[1] = perp[2] * used_x_axis[0] - used_x_axis[2] * perp[0];
+      used_y_axis[2] = perp[0] * used_x_axis[1] - used_x_axis[0] * perp[1];
+
+      len_x_axis = 0.0;
+      len_y_axis = 0.0;
+      for ( c = 0; c < 3; c++) {
+        used_x_axis[c] /= Math.abs(separations[c]);
+        used_y_axis[c] /= Math.abs(separations[c]);
+        len_x_axis += used_x_axis[c] * used_x_axis[c];
+        len_y_axis += used_y_axis[c] * used_y_axis[c];
+      }
+
+      if( len_x_axis == 0.0 || len_y_axis == 0.0 )
+          return;
+
+      len_x_axis = Math.sqrt( len_x_axis );
+      len_y_axis = Math.sqrt( len_y_axis );
+
+      if( used_y_axis[y_index] < 0.0 )
+          sign = 1.0;
+      else
+          sign = -1.0;
+
+      for (c = 0; c < 3; c++) {
+        used_x_axis[c] /= len_x_axis;
+        used_y_axis[c] /= sign * len_y_axis;
+      }
+
+      var names = ["xspace", "yspace", "zspace"];
+
+      return {
+        x_axis: used_x_axis,
+        y_axis: used_y_axis,
+        z_name: names[max_axis],
+        x_name: names[x_index],
+        y_name: names[y_index]
+      };
+  }
+
   VolumeViewer.volume_loaders.overlay = function(options, callback) {
     options = options || {};
     var volumes = options.volumes || [];
@@ -84,28 +175,18 @@
      * volumes and returns a more-or-less valid slice object.
      */
     overlay_volume.slice = function(axis, slice_num, time) {
-      slice_num = slice_num === undefined ? this.position[axis] : slice_num;
-      time = time === undefined ? this.current_time : time;
-
-      var slices = [];
-
-      this.volumes.forEach(function(volume) {
-        /*
-         * We need to correct the slice_num for images with different
-         * numbers of points along an axis. Otherwise we won't form
-         * the composite image correctly.
-         * TODO: This is only a partial fix, and should be improved.
-         */
-        var factor = volume.header[axis].step / volumes[0].header[axis].step;
-        var corrected_slice_num = Math.round(slice_num / factor);
-        var slice = volume.slice(axis, corrected_slice_num, time);
-        slices.push(slice);
-      });
-
+      if (axis.constructor === Array) {
+          var oblique = setObliqueAxis(overlay_volume, axis);
+          return {
+              axis: axis,
+              height_space: header[oblique.z_name].height_space,
+              width_space: header[oblique.z_name].width_space
+          };
+      }
       return {
+        axis: axis,
         height_space: header[axis].height_space,
         width_space: header[axis].width_space,
-        slices: slices
       };
     };
 
@@ -115,7 +196,6 @@
     overlay_volume.getSliceImage = function(slice, zoom, contrast, brightness) {
       zoom = zoom || 1;
 
-      var slices = slice.slices;
       var images = [];
       var max_width = Math.round(this.size * zoom);
       var max_height = max_width;
@@ -140,8 +220,7 @@
         };
       }
 
-      slices.forEach(function(slice, i) {
-        var volume = overlay_volume.volumes[i];
+      overlay_volume.volumes.forEach(function(volume, i) {
         var color_map = volume.color_map;
         var intensity_min = volume.intensity_min;
         var intensity_max = volume.intensity_max;
@@ -164,9 +243,58 @@
 
         var time_offset = header.time ? volume.current_time * header.time.offset : 0;
 
-        var axis_space = header[slice.axis];
-        var width_space = axis_space.width_space;
-        var height_space = axis_space.height_space;
+        var width_name, height_name, axis_name;
+        var col_step, row_step;
+        var x_axis, y_axis;
+
+        console.log("axis " + slice.axis);
+
+        if (slice.axis.constructor === Array) {
+          var oblique = setObliqueAxis(volume, slice.axis);
+          axis_name = oblique.z_name;
+          width_name = oblique.x_name;
+          height_name = oblique.y_name;
+          // Get the appropriate values for stepping through
+          // the width and height dimensions.
+          //
+          col_step = {
+              di: oblique.x_axis[header.order[0].charCodeAt(0)-"x".charCodeAt(0)] / zoom,
+              dj: oblique.x_axis[header.order[1].charCodeAt(0)-"x".charCodeAt(0)] / zoom,
+              dk: oblique.x_axis[header.order[2].charCodeAt(0)-"x".charCodeAt(0)] / zoom
+          };
+          row_step = {
+              di: oblique.y_axis[header.order[0].charCodeAt(0)-"x".charCodeAt(0)] / zoom,
+              dj: oblique.y_axis[header.order[1].charCodeAt(0)-"x".charCodeAt(0)] / zoom,
+              dk: oblique.y_axis[header.order[2].charCodeAt(0)-"x".charCodeAt(0)] / zoom
+          };
+          x_axis = [oblique.x_axis[0] / zoom,
+                    oblique.x_axis[1] / zoom,
+                    oblique.x_axis[2] / zoom];
+          y_axis = [oblique.y_axis[0] / zoom,
+                    oblique.y_axis[1] / zoom,
+                    oblique.y_axis[2] / zoom];
+        }
+        else {
+          var axis_space = header[slice.axis];
+          axis_name = slice.axis;
+          width_name = axis_space.width_space.name;
+          height_name = axis_space.height_space.name;
+          // Get the appropriate values for stepping through
+          // the width and height dimensions.
+          //
+          col_step = voxelStepForSpace(header, width_name, zoom);
+          row_step = voxelStepForSpace(header, height_name, zoom);
+          var mapping = {};
+          mapping[header.order[0]] = "di";
+          mapping[header.order[1]] = "dj";
+          mapping[header.order[2]] = "dk";
+          x_axis = [col_step[mapping.xspace],
+                    col_step[mapping.yspace],
+                    col_step[mapping.zspace]];
+          y_axis = [row_step[mapping.xspace],
+                    row_step[mapping.yspace],
+                    row_step[mapping.zspace]];
+        }
 
         var i_offset = header[header.order[0]].offset;
         var j_offset = header[header.order[1]].offset;
@@ -188,16 +316,25 @@
         // space in order to properly align the volumes.
         //
         var w_origin = overlay_volume.getWorldCoords();
-        w_origin[width_space.name[0]] = min_col / zoom;
-        w_origin[height_space.name[0]] = max_row / zoom;
 
+        var x_pixel_start = (SIZE / 2)*zoom;
+        var y_pixel_start = -(SIZE / 2)*zoom;
+
+        var width_index = width_name.charCodeAt(0) - "x".charCodeAt(0);
+        var height_index = height_name.charCodeAt(0) - "x".charCodeAt(0);
+        var axis_index = axis_name.charCodeAt(0) - "x".charCodeAt(0);
+
+        w_origin[width_name[0]] = (x_pixel_start * x_axis[width_index] +
+                                   y_pixel_start * y_axis[width_index]);
+
+        w_origin[height_name[0]] = (x_pixel_start * x_axis[height_index] +
+                                    y_pixel_start * y_axis[height_index]);
+
+        w_origin[axis_name[0]] += (x_pixel_start * x_axis[axis_index] +
+                                   y_pixel_start * y_axis[axis_index]);
+
+        console.log("2. w_origin " + w_origin.x + " " + w_origin.y + " " + w_origin.z);
         var v_origin = volume.worldToVoxel(w_origin.x, w_origin.y, w_origin.z);
-
-        // Get the appropriate values for stepping through
-        // the width and height dimensions.
-        //
-        var col_step = voxelStepForSpace(header, width_space.name, zoom);
-        var row_step = voxelStepForSpace(header, height_space.name, zoom);
 
         // Set the initial coordinate used in the loop.
         var row_coord = {
