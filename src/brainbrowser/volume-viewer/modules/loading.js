@@ -368,7 +368,7 @@ BrainBrowser.VolumeViewer.modules.loading = function(viewer) {
   function openVolume(volume_description, callback){
     var loader = VolumeViewer.volume_loaders[volume_description.type];
     var error_message;
-    
+
     if(loader){
       loader(volume_description, callback);
     } else {
@@ -696,9 +696,8 @@ BrainBrowser.VolumeViewer.modules.loading = function(viewer) {
         }
 
         function zoom(delta) {
-          panel.zoom *= (delta < 0) ? 1/1.05 : 1.05;
-          panel.zoom = Math.max(panel.zoom, 0.25);
-          panel.updateVolumePosition();
+          var scale_factor = (delta < 0) ?  1/1.05 : 1.05;
+          panel.updateZoom(scale_factor);
           panel.updateSlice();
 
           if (viewer.synced){
@@ -706,8 +705,7 @@ BrainBrowser.VolumeViewer.modules.loading = function(viewer) {
               var synced_panel = synced_volume.display.getPanel(axis_name);
 
               if (synced_vol_id !== vol_id) {
-                synced_panel.zoom = panel.zoom;
-                synced_panel.updateVolumePosition();
+                synced_panel.updateZoom(scale_factor);
                 synced_panel.updateSlice();
               }
             });

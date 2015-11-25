@@ -324,6 +324,32 @@
 
       /**
       * @doc function
+      * @name panel.panel:updateZoom
+      * @param {number} scale The fraction to apply to the zoom factor.
+      * @description
+      * Update the zoom level based on the given parameter, which should
+      * generally be a number close to one.
+      * ```js
+      * panel.updateZoom(scale_factor);
+      * ```
+      */
+      updateZoom: function(scale_factor) {
+        var x_centre = panel.canvas.width / 2.0;
+        var y_centre = panel.canvas.height / 2.0;
+
+        if (panel.zoom * scale_factor <= 0.10)
+          return;
+
+        console.log("updateZoom " + panel.zoom + " " + scale_factor + " " + x_centre + " " + y_centre);
+
+        panel.image_center.x = x_centre - scale_factor * (x_centre - panel.image_center.x);
+        panel.image_center.y = y_centre - scale_factor * (y_centre - panel.image_center.y);
+
+        panel.zoom *= scale_factor;
+      },
+
+      /**
+      * @doc function
       * @name panel.panel:updateVolumePosition
       * @param {number} x The x coordinate of the canvas position.
       * @param {number} y The y coordinate of the canvas position.
@@ -381,7 +407,7 @@
         update_timeout = setTimeout(function() {
           var volume = panel.volume;
           var slice;
-          
+          console.log('timeout: ' + panel.image_center.x + " " + panel.image_center.y);
           slice = volume.slice(panel.axis);
 
           setSlice(panel, slice);
@@ -399,6 +425,45 @@
           update_callbacks.length = 0;
 
         }, 0);
+      },
+
+      repaint: function (cursor_color, active) {
+        var cursor = panel.getCursorPosition();
+        var canvas = panel.canvas;
+        var context = panel.context;
+        var frame_width = 4;
+        var half_frame_width = frame_width / 2;
+
+        console.log('repaint: ' + panel.image_center.x + " " + panel.image_center.y);
+        
+        context.globalAlpha = 255;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawSlice(panel);
+        
+        panel.triggerEvent("draw", {
+          volume: panel.volume,
+          cursor: cursor,
+          canvas: canvas,
+          context: context
+        });
+        
+        drawCursor(panel, cursor_color);
+
+        if (active) {
+          context.save();
+          context.strokeStyle = "#EC2121";
+          context.lineWidth = frame_width;
+          context.strokeRect(
+            half_frame_width,
+            half_frame_width,
+            canvas.width - frame_width,
+            canvas.height - frame_width
+          );
+          context.restore();
+        }
+
+        panel.updated = false;
       },
 
       /**
@@ -447,41 +512,12 @@
           return;
         }
 
-        var canvas = panel.canvas;
-        var context = panel.context;
-        var frame_width = 4;
-        var half_frame_width = frame_width / 2;
-        
-        context.globalAlpha = 255;
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        drawSlice(panel);
-        
-        panel.triggerEvent("draw", {
-          volume: panel.volume,
-          cursor: cursor,
-          canvas: canvas,
-          context: context
-        });
-        
-        drawCursor(panel, cursor_color);
-
-        if (active) {
-          context.save();
-          context.strokeStyle = "#EC2121";
-          context.lineWidth = frame_width;
-          context.strokeRect(
-            half_frame_width,
-            half_frame_width,
-            canvas.width - frame_width,
-            canvas.height - frame_width
-          );
-          context.restore();
+        if (panel.volume.type === "bigbrain") {
+          setSlice(panel, panel.volume.slice(panel.axis));
+          return;
         }
-
-        panel.updated = false;
-      }
-    };
+        panel.repaint(cursor_color, active);
+      }};
 
     Object.keys(options).forEach(function(k) {
       if (!BrainBrowser.utils.isFunction(panel[k])) {
@@ -514,7 +550,15 @@
   // Set the volume slice to be rendered on the panel.
   function setSlice(panel, slice) {
     panel.slice = slice;
-    panel.slice_image = panel.volume.getSliceImage(panel.slice, panel.zoom, panel.contrast, panel.brightness);
+    panel.slice_image = panel.volume.getSliceImage(panel.slice, panel.zoom, 
+                                                   panel.contrast, 
+                                                   panel.brightness, 
+                                                   panel, 
+    function(context) {
+      panel.slice_image = undefined;
+      panel.slice_context = context;
+      panel.repaint(panel.volume.color_map.cursor_color, false);
+    });
   }
 
   // Draw the cursor at its current position on the canvas.
@@ -601,7 +645,20 @@
       };
       panel.context.putImageData(image, origin.x, origin.y);
     }
-
+    var context = panel.slice_context;
+    if (context) {
+      panel.context.drawImage(
+        context.canvas,
+        0,
+        0,
+        context.canvas.width,
+        context.canvas.height,
+        0,
+        0,
+        panel.canvas.width,
+        panel.canvas.height
+      );
+    }
   }
 
   // Get the origin at which slices should be drawn.

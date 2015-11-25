@@ -150,6 +150,20 @@ $(function() {
             }
           }
         });
+      } else if ($(this).val() === "bigbrain"){
+        $("#sync-volumes-wrapper").hide();
+        viewer.clearVolumes();
+        viewer.loadVolumes({
+          volumes: [
+            {
+              type: 'bigbrain',
+              template: {
+                element_id: "volume-ui-template",
+                viewer_insert_class: "volume-viewer-display"
+              }
+            }
+          ]
+        });
       } else {
         $("#volume-file").show();
         viewer.clearVolumes();
