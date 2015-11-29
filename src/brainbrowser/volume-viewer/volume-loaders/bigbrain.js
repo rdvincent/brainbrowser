@@ -30,30 +30,31 @@
   "use strict";
 
   var VolumeViewer = BrainBrowser.VolumeViewer;
-  var PANEL_CX = 256;
-  var PANEL_CY = 256;
   var TILE_CX = 256;
   var TILE_CY = 256;
 
+  var host = "132.216.122.239"; /* ace-toroviewer-1 is at 132.216.122.239 */
+
   VolumeViewer.volume_loaders.bigbrain = function(description, callback) {
+    if (description.host_name !== undefined)
+      host = description.host_name;
     createBigbrainVolume(callback);
   }
 
   function getURL(axis, slice, level, x, y) {
-    /* ace-toroviewer-1 is at 132.216.122.239 */
     var numTiles = 1 << level;
     var url;
     switch (axis) {
     case 'yspace':
       /* URL for Y-axis */
-      url = "http://132.216.122.239/y/l" +  (level) + "/x" + x + "/y" + slice + "/z" + (numTiles-y-1) + ".png";
+      url = "http://" + host + "/y/l" + level + "/x" + x + "/y" + slice + "/z" + (numTiles-y-1) + ".png";
       break;
     case 'xspace':
       /* URL for X-axis */
-      var url = "http://132.216.122.239/x/l" +  (level) + "/x" + slice + "/y" + x + "/z" + (numTiles-y-1) + ".png";
+      url = "http://" + host + "/x/l" + level + "/x" + slice + "/y" + x + "/z" + (numTiles-y-1) + ".png";
       break;
     case 'zspace':
-      var url = "http://132.216.122.239/z/l" + level + "/x" + x + "/y" + (numTiles-y-1) + "/z" + slice + ".png";
+      url = "http://" + host + "/z/l" + level + "/x" + x + "/y" + (numTiles-y-1) + "/z" + slice + ".png";
       break;
     }
     return url;
@@ -67,9 +68,9 @@
 
     header.order = ["xspace", "yspace", "zspace"];
 
-    header.xspace.space_length = 6528;
-    header.yspace.space_length = 7404;
-    header.zspace.space_length = 5693;
+    header.xspace.space_length = 8192;
+    header.yspace.space_length = 8192;
+    header.zspace.space_length = 8192;
     
     header.xspace.step = 0.04;
     header.yspace.step = 0.04;
@@ -177,7 +178,7 @@
     volume.getSliceImage = function(slice, zoom, contrast, brightness, panel, callback) {
       zoom = zoom || 1;
 
-      console.log("bigbrain.getSliceImage(" + slice.axis + ", " + slice.number + ", " + zoom + ")");
+      //console.log("bigbrain.getSliceImage(" + slice.axis + ", " + slice.number + ", " + zoom + ")");
 
       if (slice.number === undefined)
         return null;
@@ -241,7 +242,7 @@
           getTile(url, level, x, y, zoom, panel, target_context, callback);
           n++;
         }
-      console.log("requested " + n + " tiles at level " + level);
+      //console.log("requested " + n + " tiles at level " + level);
       return target_image;
     };
 

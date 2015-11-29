@@ -157,6 +157,7 @@ $(function() {
           volumes: [
             {
               type: 'bigbrain',
+              host_name: "localhost:5000",
               template: {
                 element_id: "volume-ui-template",
                 viewer_insert_class: "volume-viewer-display"
@@ -164,6 +165,14 @@ $(function() {
             }
           ]
         });
+        $('.volume-viewer-display').width((256+10)*3);
+        $('.slice-display').css('float', 'left');
+        $('.slice-series-div').hide();
+        $('.color-map-file-div').hide();
+        $('.contrast-div').hide();
+        $('.threshold-div').hide();
+        $('.brightness-div').hide();
+        $('#color-map-0').hide();
       } else {
         $("#volume-file").show();
         viewer.clearVolumes();
@@ -190,6 +199,9 @@ $(function() {
         $('.volume-controls').css("width", "");
         viewer.setPanelSize(size, size, { scale_image: true });
       }
+      // bigbrain?
+      // viewer.setPanelSize(size, size, { scale_image: true });
+      // $('.volume-viewer-display').width((size+10)*3);
     });
 
     // Should cursors in all panels be synchronized?
