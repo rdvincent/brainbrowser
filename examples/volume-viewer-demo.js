@@ -173,6 +173,7 @@ $(function() {
         $('.threshold-div').hide();
         $('.brightness-div').hide();
         $('#color-map-0').hide();
+        $(".volume-controls").css("width", "auto");
       } else {
         $("#volume-file").show();
         viewer.clearVolumes();
