@@ -413,8 +413,8 @@
         slice_x = Math.round(x * vpp_x);
         slice_y = Math.round(y * vpp_y);
 
-        console.log("uvp: zoom " + zoom + " vpp_x " + vpp_x + " vpp_y " + vpp_y + " x " + x + " y " + y + " s_x " + slice_x + " s_y " + slice_y);
-        console.log("    " + origin.x + " " + origin.y);
+        //console.log("uvp: zoom " + zoom + " vpp_x " + vpp_x + " vpp_y " + vpp_y + " x " + x + " y " + y + " s_x " + slice_x + " s_y " + slice_y);
+        //console.log("    " + origin.x + " " + origin.y);
 
         // swap the direction of the y axis.
         slice_y = (slice.height_space.space_length - slice_y - 1);
