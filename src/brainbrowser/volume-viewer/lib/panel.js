@@ -32,12 +32,12 @@
 * @property {string} axis The name of the axis being displayed (xspace, yspace or zspace).
 * @property {object} slice The slice currently being displayed.
 * @property {object} canvas Reference to the canvas area used for drawing.
-* @property {object} context The 2D context of the canvas. 
+* @property {object} context The 2D context of the canvas.
 * @property {object} image_center The **x** and **y** coordinates of the
 *   center of the slice currently being displayed.
-* @property {number} zoom The current zoom level of the panel. 
-* @property {object} cursor The current **x** and **y** coordinates of the cursor. 
-* @property {object} mouse The current **x** and **y** coordinates of the mouse. 
+* @property {number} zoom The current zoom level of the panel.
+* @property {object} cursor The current **x** and **y** coordinates of the cursor.
+* @property {object} mouse The current **x** and **y** coordinates of the mouse.
 * @description
 * Object representing an individual canvas panel.
 */
@@ -54,13 +54,13 @@
   * * **volume_id** The ID of the volume being displayed on the panel.
   * * **axis** The axis being displayed on the panel (xspace, yspace or zspace).
   * * **canvas** The canvas on which to draw slices.
-  * * **image_center** An object containing the starting **x** and **y** positions of 
+  * * **image_center** An object containing the starting **x** and **y** positions of
   *     the slice image center.
   * * **updated** Boolean value indicating whether the panel should be redrawn.
   *
   * @returns {object} Panel object used to control display of a slice.
   * @description
-  * Factory function to produce the panel object used to control the 
+  * Factory function to produce the panel object used to control the
   * display of a slice.
   * ```js
   * BrainBrowser.VolumeViewer.createPanel({
@@ -97,7 +97,7 @@
   * @name VolumeViewer.Panel Events:sliceupdate
   *
   * @description
-  * Triggered when the slice being displayed is updated. 
+  * Triggered when the slice being displayed is updated.
   * The following information will be passed in the event object:
   *
   * * **event.volume**: the volume on which the slice was updated.
@@ -167,7 +167,7 @@
     options = options || {};
 
     var old_zoom_level = 0;
-    
+
     // Where the cursor used to be.
     var old_cursor_position = {
       x: 0,
@@ -315,10 +315,29 @@
         var volume = panel.volume;
         var slice = panel.slice;
         var origin = getDrawingOrigin(panel);
+        var zoom = panel.zoom;
+        var xstep = slice.width_space.step;
+        var ystep = slice.height_space.step;
+        var panel_width = panel.canvas.width; // pixels
+        var panel_height = panel.canvas.height; // pixels
+
+        var vpp_x = Math.abs(1 / (xstep * zoom));
+        var vpp_y = Math.abs(1 / (ystep * zoom));
+
+        var x = volume.position[slice.width_space.name];
+        var y = volume.position[slice.height_space.name];
+
+        y = slice.height_space.space_length - y - 1;
+
+        var c_x = x / vpp_x;
+        var c_y = y / vpp_y;
+
+        c_y += origin.y
+        c_x += origin.x
 
         return {
-          x: volume.position[slice.width_space.name] * Math.abs(slice.width_space.step) * panel.zoom + origin.x,
-          y: (slice.height_space.space_length - volume.position[slice.height_space.name] - 1) * Math.abs(slice.height_space.step) * panel.zoom  + origin.y
+          x: c_x, // + Math.round(0.5 / vpp_x),
+          y: c_y  //- Math.round(0.5 / vpp_y)
         };
       },
 
@@ -340,10 +359,13 @@
         if (panel.zoom * scale_factor <= 0.10)
           return;
 
-        console.log("updateZoom " + panel.zoom + " " + scale_factor + " " + x_centre + " " + y_centre);
+        // TODO: figure out why the display glitches so badly when this is
+        // enabled!
 
-        panel.image_center.x = x_centre - scale_factor * (x_centre - panel.image_center.x);
-        panel.image_center.y = y_centre - scale_factor * (y_centre - panel.image_center.y);
+        //console.log("updateZoom " + panel.zoom + " " + scale_factor + " " + x_centre + " " + y_centre);
+
+        //panel.image_center.x = x_centre - scale_factor * (x_centre - panel.image_center.x);
+        //panel.image_center.y = y_centre - scale_factor * (y_centre - panel.image_center.y);
 
         panel.zoom *= scale_factor;
       },
@@ -369,17 +391,36 @@
         var cursor;
         var slice_x, slice_y;
 
+        //console.log("uvp: x " + x + " y " + y);
+
         if (x === undefined || y === undefined) {
           cursor = panel.getCursorPosition();
           x = cursor.x;
           y = cursor.y;
         }
 
-        slice_x = Math.round((x - origin.x) / zoom / Math.abs(slice.width_space.step));
-        slice_y = Math.round(slice.height_space.space_length - (y - origin.y) / zoom  / Math.abs(slice.height_space.step) - 1);
+        var xstep = slice.width_space.step;
+        var ystep = slice.height_space.step;
+        var panel_width = panel.canvas.width; // pixels
+        var panel_height = panel.canvas.height; // pixels
+        var vpp_x = Math.abs(1 / (xstep * zoom));
+        var vpp_y = Math.abs(1 / (ystep * zoom));
 
-        volume.position[panel.slice.width_space.name] = slice_x;
-        volume.position[panel.slice.height_space.name] = slice_y;
+        // subtract away the origin.
+        x -= origin.x;
+        y -= origin.y;
+
+        slice_x = Math.round(x * vpp_x);
+        slice_y = Math.round(y * vpp_y);
+
+        console.log("uvp: zoom " + zoom + " vpp_x " + vpp_x + " vpp_y " + vpp_y + " x " + x + " y " + y + " s_x " + slice_x + " s_y " + slice_y);
+        console.log("    " + origin.x + " " + origin.y);
+
+        // swap the direction of the y axis.
+        slice_y = (slice.height_space.space_length - slice_y - 1);
+          
+        volume.position[slice.width_space.name] = slice_x;
+        volume.position[slice.height_space.name] = slice_y;
 
         panel.updated = true;
       },
@@ -398,7 +439,7 @@
       * ```
       */
       updateSlice: function(callback) {
-        
+
         clearTimeout(update_timeout);
         if (BrainBrowser.utils.isFunction(callback)) {
           update_callbacks.push(callback);
@@ -407,7 +448,7 @@
         update_timeout = setTimeout(function() {
           var volume = panel.volume;
           var slice;
-          console.log('timeout: ' + panel.image_center.x + " " + panel.image_center.y);
+          //console.log('timeout: ' + panel.image_center.x + " " + panel.image_center.y);
           slice = volume.slice(panel.axis);
 
           setSlice(panel, slice);
@@ -434,20 +475,20 @@
         var frame_width = 4;
         var half_frame_width = frame_width / 2;
 
-        console.log('repaint: ' + panel.image_center.x + " " + panel.image_center.y);
-        
+        //console.log('repaint: ' + panel.image_center.x + " " + panel.image_center.y);
+
         context.globalAlpha = 255;
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         drawSlice(panel);
-        
+
         panel.triggerEvent("draw", {
           volume: panel.volume,
           cursor: cursor,
           canvas: canvas,
           context: context
         });
-        
+
         drawCursor(panel, cursor_color);
 
         if (active) {
@@ -550,10 +591,10 @@
   // Set the volume slice to be rendered on the panel.
   function setSlice(panel, slice) {
     panel.slice = slice;
-    panel.slice_image = panel.volume.getSliceImage(panel.slice, panel.zoom, 
-                                                   panel.contrast, 
-                                                   panel.brightness, 
-                                                   panel, 
+    panel.slice_image = panel.volume.getSliceImage(panel.slice, panel.zoom,
+                                                   panel.contrast,
+                                                   panel.brightness,
+                                                   panel,
     function(context) {
       panel.slice_image = undefined;
       panel.slice_context = context;
@@ -570,10 +611,11 @@
     var x, y, space;
     var distance;
     var dx, dy;
+    var step = Math.abs(panel.slice.width_space.step);
     color = color || "#FF0000";
     
     context.save();
-    
+
     context.strokeStyle = color;
     context.fillStyle = color;
 
@@ -581,7 +623,7 @@
     x = cursor.x;
     y = cursor.y;
 
-    context.lineWidth = space * 2;
+    context.lineWidth = Math.max(1, space * 2);
     context.beginPath();
     context.moveTo(x, y - length);
     context.lineTo(x, y - space);
@@ -661,14 +703,21 @@
     }
   }
 
-  // Get the origin at which slices should be drawn.
+  // Get the pixel origin at which slices should be drawn.
+  //
   function getDrawingOrigin(panel) {
+    var zoom = panel.zoom;
     var slice = panel.slice;
+    var xstep = slice.width_space.step;
+    var ystep = slice.height_space.step;
+
+    var image_width = Math.abs(Math.floor(slice.width * xstep * zoom));
+    var image_height = Math.abs(Math.floor(slice.height * ystep * zoom));
+
     return {
-      x: panel.image_center.x - Math.abs(slice.width_space.step * slice.width_space.space_length * panel.zoom) / 2,
-      y: panel.image_center.y - Math.abs(slice.height_space.step * slice.height_space.space_length * panel.zoom) / 2
+      x: panel.image_center.x - image_width / 2,
+      y: panel.image_center.y - image_height / 2
     };
   }
 
 })();
-
