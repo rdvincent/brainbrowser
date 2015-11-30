@@ -72,9 +72,9 @@
     header.yspace.space_length = 8192;
     header.zspace.space_length = 8192;
     
-    header.xspace.step = 0.04;
-    header.yspace.step = 0.04;
-    header.zspace.step = 0.04;
+    header.xspace.step = 0.03;
+    header.yspace.step = 0.03;
+    header.zspace.step = 0.03;
 
     header.xspace.start = -(header.xspace.space_length * header.xspace.step) / 2.0;
     header.yspace.start = -(header.yspace.space_length * header.yspace.step) / 2.0;
