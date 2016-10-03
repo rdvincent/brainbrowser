@@ -479,9 +479,8 @@
 
         // Space
         if (key === 32) {
-          event.preventDefault();
-
           if (volume.header.time) {
+            event.preventDefault();
             if (event.shiftKey) {
               time = Math.max(0, volume.current_time - 1);
             } else {

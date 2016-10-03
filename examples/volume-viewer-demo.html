@@ -111,6 +111,9 @@
         <span class="slice-series-button button" data-axis="zspace">Transverse</span>
       </div>
 
+      <span class="control-heading">Annotations:</span>
+      <select id='anno-list-{{VOLID}}'>
+      </select>
     </div>
   </script>
   <script id="overlay-ui-template" type="x-volume-ui-template">
@@ -186,7 +189,6 @@
           <input type="checkbox" class="button" id="sync-volumes"><label for="sync-volumes">Synchronize</label>
         </span>
         <span id="screenshot" class="button">Screenshot</span>
-
         <div id="volume-file" class="file-select">
           <h3><u>For MINC file:</u></h3>
           <div>
@@ -236,6 +238,7 @@
   <script src="js/brainbrowser/volume-viewer/lib/utils.js"></script>
   <script src="js/brainbrowser/volume-viewer/modules/loading.js"></script>
   <script src="js/brainbrowser/volume-viewer/modules/rendering.js"></script>
+  <script src="js/brainbrowser/volume-viewer/modules/annotate.js"></script>
   <script src="js/brainbrowser/volume-viewer/volume-loaders/overlay.js"></script>
   <script src="js/brainbrowser/volume-viewer/volume-loaders/minc.js"></script>
   <script src="js/brainbrowser/volume-viewer/volume-loaders/nifti1.js"></script>
