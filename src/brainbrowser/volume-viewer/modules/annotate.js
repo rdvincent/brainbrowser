@@ -46,7 +46,6 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
   }
   
   function closeAnnotation() {
-    console.log('close');
     var elem = document.getElementById('anno-box');
     if (elem) {
       document.body.removeChild(elem);
@@ -56,15 +55,20 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
   function saveAnnotation(text) {
     if (!viewer.active_panel)
       return;
+    if (text.length === 0)
+      return;
     var panel = viewer.active_panel;
     var volume = panel.volume;
+    var point = volume.getWorldCoords();
     var annotation = {
-      position: volume.getWorldCoords(),
-      content: text
+      name: "",
+      points: [[point.x, point.y, point.z]],
+      description: text,
+      isClosed: false,
+      color: "FFFFFF"
     };
-    console.log('save');
     if (typeof volume.annotations === "undefined") {
-      volume.annotations = []
+      volume.annotations = [];
     }
     volume.annotations.push(annotation);
 
@@ -102,7 +106,7 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     document.body.appendChild(newbox);
 
     var elem = document.createElement('a');
-    elem.setAttribute('href', '#save');
+    elem.setAttribute('href', '#');
     elem.id = 'anno-save';
     elem.style.display = 'inline-block';
     elem.style.width = (newbox.offsetWidth / 2) + 'px';
@@ -110,7 +114,7 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     newbox.appendChild(elem);
 
     elem = document.createElement('a');
-    elem.setAttribute('href', '#cancel');
+    elem.setAttribute('href', '#');
     elem.id = 'anno-cancel';
     elem.style.display = 'inline-block';
     elem.style.width = (newbox.offsetWidth / 2) + 'px';
@@ -118,30 +122,30 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     newbox.appendChild(elem);
 
     // Save the note.
-    $('#anno-save').click(function() {
-      saveAnnotation(textarea.value);
-      closeAnnotation();
-    });
+    elem = document.getElementById('anno-save');
+    elem.addEventListener("click",
+                          function() {
+                            saveAnnotation(textarea.value.trim());
+                            closeAnnotation();
+                          }, false);
 
     // Just close the note.
-    $('#anno-cancel').click(function() {
-      closeAnnotation();
-    });
+    elem = document.getElementById('anno-cancel');
+    elem.addEventListener("click", closeAnnotation, false);
 
-    $('#anno-list-' + panel.volume_id).click(function(e) {
+    elem = document.getElementById('anno-list-' + panel.volume_id);
+    elem.addEventListener("click", function(e) {
       console.log('click: ' + e.target.value);
       var array = e.target.value.split(':');
-      var volume_id = parseInt(array[0]);
-      var n_anno = parseInt(array[1]);
+      var volume_id = parseInt(array[0], 10);
+      var n_anno = parseInt(array[1], 10);
       var volume = viewer.volumes[volume_id];
       var anno = volume.annotations[n_anno];
-      volume.setWorldCoords(anno.position.x, anno.position.y, anno.position.z);
+      volume.setWorldCoords(anno.points[0][0],
+                            anno.points[0][1],
+                            anno.points[0][2]);
       triggerUpdate(volume);
-    });
-    
-    $('#anno-list').change(function(e) {
-      console.log('change: ' + e.target.value);
-    });
+    }, false);
   }
 
   function addKeyboardControls() {
@@ -157,11 +161,16 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
             return;
           var panel = viewer.active_panel;
           var volume = panel.volume;
-          var anno_str = JSON.stringify(volume.annotations, null, 2);
-          var data = "data:text/json;charset=utf-8," +
+          var date = new Date();
+          var data = {
+            date: date.toISOString(),
+            annotations: volume.annotations
+          };
+          var anno_str = JSON.stringify(data, null, 2);
+          var data_str = "data:text/json;charset=utf-8," +
               encodeURIComponent(anno_str);
           var elem = document.getElementById('anno-download');
-          elem.setAttribute("href", data);
+          elem.setAttribute("href", data_str);
           elem.setAttribute("download", "annotation.json");
           elem.click();
         }
@@ -173,4 +182,5 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
       }
     });
   }
-}
+};
+
