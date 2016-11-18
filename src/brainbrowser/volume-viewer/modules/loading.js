@@ -372,7 +372,7 @@ BrainBrowser.VolumeViewer.modules.loading = function(viewer) {
     if(loader){
       loader(volume_description, callback);
     } else {
-      error_message = "Unsuported Volume Type";
+      error_message = "Unsupported Volume Type";
 
       BrainBrowser.events.triggerEvent("error", { message: error_message });
       throw new Error(error_message);

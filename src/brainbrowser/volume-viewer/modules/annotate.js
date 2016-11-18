@@ -22,6 +22,7 @@
 
 /*
  * Author: Robert D. Vincent <robert.d.vincent@mcgill.ca>
+ * Simple annotations for the volume viewer.
  */
 
 BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
@@ -164,6 +165,7 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
           var date = new Date();
           var data = {
             date: date.toISOString(),
+            name: volume.name,
             annotations: volume.annotations
           };
           var anno_str = JSON.stringify(data, null, 2);

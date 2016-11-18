@@ -50,19 +50,19 @@
     if (description.url) {
       BrainBrowser.loader.loadFromURL(description.url, function(data) {
         parseMGHHeader(data, function(header) {
-          createMGHVolume(header, data, callback);
+          createMGHVolume(header, data, description.url, callback);
         });
       }, {result_type: "arraybuffer" });
 
     } else if (description.file) {
       BrainBrowser.loader.loadFromFile(description.file, function(data) {
         parseMGHHeader(data, function(header) {
-          createMGHVolume(header, data, callback);
+          createMGHVolume(header, data, description.file, callback);
         });
       }, {result_type: "arraybuffer" });
     } else if (description.source) {
       parseMGHHeader(description.source, function(header) {
-        createMGHVolume(header, description.source, callback);
+        createMGHVolume(header, description.source, "<unknown>", callback);
       });
     } else {
       error_message = "invalid volume description.\n" +
@@ -290,10 +290,11 @@
     }
   }
 
-  function createMGHVolume(header, raw_data, callback) {
+  function createMGHVolume(header, raw_data, volume_name, callback) {
     var volume = VolumeViewer.createVolume(header,
                                            createMGHData(header, raw_data));
     volume.type = "mgh";
+    volume.name = volume_name;
     volume.intensity_min = header.voxel_min;
     volume.intensity_max = header.voxel_max;
     volume.saveOriginAndTransform(header);

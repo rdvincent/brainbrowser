@@ -39,19 +39,20 @@
     if (description.nii_url) {
       BrainBrowser.loader.loadFromURL(description.nii_url, function(nii_data) {
         parseNifti1Header(nii_data, function(header) {
-          createNifti1Volume(header, nii_data, callback);
+          createNifti1Volume(header, nii_data, description.nii_url, callback);
         });
       }, {result_type: "arraybuffer" });
 
     } else if (description.nii_file) {
       BrainBrowser.loader.loadFromFile(description.nii_file, function(nii_data) {
         parseNifti1Header(nii_data, function(header) {
-          createNifti1Volume(header, nii_data, callback);
+          createNifti1Volume(header, nii_data, description.nii_file, callback);
         });
       }, {result_type: "arraybuffer" });
     } else if (description.nii_source) {
       parseNifti1Header(description.nii_source, function(header) {
-        createNifti1Volume(header, description.nii_source, callback);
+        createNifti1Volume(header, description.nii_source, "<unknown>",
+                           callback);
       });
     } else {
       error_message = "invalid volume description.\n" +
@@ -373,10 +374,11 @@
     return m;
   }
 
-  function createNifti1Volume(header, raw_data, callback) {
+  function createNifti1Volume(header, raw_data, volume_name, callback) {
     var volume = VolumeViewer.createVolume(header,
                                            createNifti1Data(header, raw_data));
     volume.type = "nifti";
+    volume.name = volume_name;
     volume.intensity_min = volume.header.voxel_min;
     volume.intensity_max = volume.header.voxel_max;
     volume.saveOriginAndTransform(header);

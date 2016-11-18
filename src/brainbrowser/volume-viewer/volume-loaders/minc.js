@@ -37,21 +37,24 @@
       BrainBrowser.loader.loadFromFile(description.raw_data_file, function(raw_data) {
         var tmp = VolumeViewer.utils.hdf5Loader(raw_data);
         parseHeader(tmp.header_text, function(header) {
-          createMincVolume(header, tmp.raw_data, callback);
+          createMincVolume(header, tmp.raw_data, description.raw_data_file,
+                           callback);
         });
       }, { result_type: "arraybuffer" });
     } else if (!description.header_url && description.raw_data_url) {
       BrainBrowser.loader.loadFromURL(description.raw_data_url, function(raw_data) {
         var tmp = VolumeViewer.utils.hdf5Loader(raw_data);
         parseHeader(tmp.header_text, function(header) {
-          createMincVolume(header, tmp.raw_data, callback);
+          createMincVolume(header, tmp.raw_data, description.raw_data_url,
+                           callback);
         });
       }, { result_type: "arraybuffer" });
     } else if (description.header_url && description.raw_data_url) {
       BrainBrowser.loader.loadFromURL(description.header_url, function(header_text) {
         parseHeader(header_text, function(header) {
           BrainBrowser.loader.loadFromURL(description.raw_data_url, function(raw_data) {
-            createMincVolume(header, raw_data, callback);
+            createMincVolume(header, raw_data, description.header_url,
+                             callback);
           }, { result_type: "arraybuffer" });
         });
       });
@@ -59,13 +62,15 @@
       BrainBrowser.loader.loadFromFile(description.header_file, function(header_text) {
         parseHeader(header_text, function(header) {
           BrainBrowser.loader.loadFromFile(description.raw_data_file, function(raw_data) {
-            createMincVolume(header, raw_data, callback);
+            createMincVolume(header, raw_data, description.header_file,
+                             callback);
           }, { result_type: "arraybuffer" });
         });
       });
     } else if (description.header_source && description.raw_data_source) {
       parseHeader(description.header_source, function(header) {
-        createMincVolume(header, description.raw_data_source, callback);
+        createMincVolume(header, description.raw_data_source, "<unknown>",
+                         callback);
       });
     } else {
       error_message = "invalid volume description.\n" +
@@ -466,10 +471,11 @@
     return native_data;
   }
 
-  function createMincVolume(header, raw_data, callback){
+  function createMincVolume(header, raw_data, volume_name, callback) {
     var volume = VolumeViewer.createVolume(header,
                                            createMincData(header, raw_data));
     volume.type = "minc";
+    volume.name = volume_name;
 
     volume.saveOriginAndTransform(header);
     volume.intensity_min = header.voxel_min;
