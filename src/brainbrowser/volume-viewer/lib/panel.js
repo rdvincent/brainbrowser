@@ -360,6 +360,50 @@
 
       /**
       * @doc function
+      * @name panel.panel:voxelToPixel
+      * @param {number} i Voxel position along first spatial axis.
+      * @param {number} j Voxel position along second spatial axis.
+      * @param {number} k Voxel position along third spatial axis.
+      * @description
+      * Returns the x, y position on the panel's canvas, corresponding 
+      * to the voxel coordinates.
+      *
+      * ```js
+      * var pos = panel.voxelToPixel(i, j, k);
+      * ```
+      */
+      voxelToPixel: function(i, j, k) {
+        var volume = panel.volume;
+        var header = volume.header;
+        var slice = panel.slice;
+        var wname = slice.width_space.name;
+        var wstep = slice.width_space.step;
+        var wlen = slice.width_space.space_length;
+        var hname = slice.height_space.name;
+        var hstep = slice.height_space.step;
+        var hlen = slice.height_space.space_length;
+        var origin = getDrawingOrigin(panel);
+        var ordered = {};
+        ordered[header.order[0]] = i;
+        ordered[header.order[1]] = j;
+        ordered[header.order[2]] = k;
+        /* Note that this is more convoluted than it probably needs to
+         * be. I have intentionally mimicked the process by which a 
+         * "position" in a volume is converted to pixel coordinates 
+         * elsewhere in the volume viewer.
+         */
+        var posx = (wstep > 0) ? ordered[wname] : wlen - ordered[wname];
+        var posy = (hstep > 0) ? ordered[hname] : hlen - ordered[hname];
+        var cx = posx * Math.abs(wstep) * panel.zoom + origin.x;
+        var cy = (hlen - posy - 1) * Math.abs(hstep) * panel.zoom + origin.y;
+        return {
+          x: cx,
+          y: cy
+        };
+      },
+
+      /**
+      * @doc function
       * @name panel.panel:updateSlice
       * @param {function} callback A callback function to call after
       * the update is complete.
@@ -465,6 +509,7 @@
         });
         
         drawCursor(panel, cursor_color);
+        drawAnnotations(panel, cursor_color, 2.5);
 
         if (active) {
           context.save();
@@ -515,6 +560,48 @@
   function setSlice(panel, slice) {
     panel.slice = slice;
     panel.slice_image = panel.volume.getSliceImage(panel.slice, panel.zoom, panel.contrast, panel.brightness);
+  }
+
+  // draws annotations on the panel if present.
+  function drawAnnotations(panel, color, radius) {
+    var i;
+    var volume = panel.volume;
+    var anno = volume.annotations;
+    var header = volume.header;
+    if (!anno)
+      return;
+
+    var v = volume.getVoxelCoords();
+    var p0 = {};
+    p0[header.order[0]] = v.i;
+    p0[header.order[1]] = v.j;
+    p0[header.order[2]] = v.k;
+    
+    for (i = 0; i < anno.length; i++) {
+      var x = anno[i].points[0][0];
+      var y = anno[i].points[0][1];
+      var z = anno[i].points[0][2];
+      v = volume.worldToVoxel(x, y, z);
+      var p1 = {};
+      p1[header.order[0]] = v.i;
+      p1[header.order[1]] = v.j;
+      p1[header.order[2]] = v.k;
+      var axis = panel.axis;
+      var dist = Math.abs(p0[axis] - p1[axis]);
+      if (dist <= radius) {
+        var pxpos = panel.voxelToPixel(v.i, v.j, v.k);
+        var context = panel.context;
+        /* Compute the radius of the small circle */
+        var srad = Math.sqrt(radius * radius - dist * dist);
+        context.save();
+        context.strokeStyle = color;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(pxpos.x, pxpos.y, srad * panel.zoom, 0, 2 * Math.PI);
+        context.stroke();
+        context.restore();
+      }
+    }
   }
 
   // Draw the cursor at its current position on the canvas.

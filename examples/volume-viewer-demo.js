@@ -357,6 +357,22 @@ $(function() {
       }
     };
 
+    if (viewer.annotate) {
+      document.addEventListener("keydown", function(event) {
+        var key = event.which;
+      
+        var keys = {
+          65: viewer.annotate.create,
+          66: viewer.annotate.download
+        };
+
+        if (typeof keys[key] === "function" && event.ctrlKey) {
+          event.preventDefault();
+          keys[key]();
+        }
+      }, false);
+    }
+
     window.addEventListener('resize', viewer.doAutoResize, false);
 
     //////////////////////////////////
@@ -798,6 +814,17 @@ $(function() {
           viewer.redrawVolumes();
         });
       });
+      
+      if (viewer.annotate) {
+        // Annotation controls.
+        container.find(".anno-file").change(function() {
+          viewer.annotate.load(vol_id, this);
+        });
+
+        container.find(".anno-list").click(function() {
+          viewer.annotate.select(vol_id, parseInt($(this).val(), 10));
+        });
+      }
     });
 
     /* This function simply takes an input hex background color

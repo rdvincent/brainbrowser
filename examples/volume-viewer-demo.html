@@ -111,9 +111,12 @@
         <span class="slice-series-button button" data-axis="zspace">Transverse</span>
       </div>
 
-      <span class="control-heading">Annotations:</span>
-      <select id='anno-list-{{VOLID}}'>
-      </select>
+      <div id='anno-controls-{{VOLID}}' class="anno-controls-div">
+        <div class="control-heading">Annotations:</div>
+        <select id='anno-list-{{VOLID}}' class='anno-list'>
+        </select>
+        <input type="file" name='anno-file-{{VOLID}}' class='anno-file'>
+      </div>
     </div>
   </script>
   <script id="overlay-ui-template" type="x-volume-ui-template">

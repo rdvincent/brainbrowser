@@ -25,34 +25,49 @@
  * Simple annotations for the volume viewer.
  */
 
-BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
+BrainBrowser.VolumeViewer.modules.annotate = function(viewer) {
   "use strict";
-  var viewer = viewerP;
 
-  console.log("Annotation module is loaded.");
+  viewer.annotate = {};
 
-  // Add keyboard controls
-  addKeyboardControls();
-
-  // We use this for triggering downloads.
+  /* Create the element we use when triggering downloads.
+   */
   var elem = document.createElement('a');
   elem.id = 'anno-download';
   elem.style.display = 'none';
   document.body.appendChild(elem);
 
+  /* Update the volume display. */
   function triggerUpdate(volume) {
     volume.display.forEach(function(panel) {
       panel.updateSlice();
     });
   }
-  
+
+  /* Private function that just deletes the UI element for the
+   * annotation.
+   */
   function closeAnnotation() {
     var elem = document.getElementById('anno-box');
     if (elem) {
       document.body.removeChild(elem);
     }
   }
-  
+
+  /* Adds an entry to the selection box.
+   * This might be better handled by moving some or all of the
+   * functionality into the UI, as I am not happy embedding the
+   * ID of an HTML element this module isn't responsible for
+   * creating!
+   */
+  function addToSelect(vol_id, annotation, index) {
+    var select = document.getElementById('anno-list-' + vol_id);
+    var option = document.createElement('option');
+    option.text = annotation.name;
+    option.value = index;
+    select.add(option);
+  }
+
   function saveAnnotation(text) {
     if (!viewer.active_panel)
       return;
@@ -62,9 +77,9 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     var volume = panel.volume;
     var point = volume.getWorldCoords();
     var annotation = {
-      name: "",
+      name: text,
       points: [[point.x, point.y, point.z]],
-      description: text,
+      description: "",
       isClosed: false,
       color: "FFFFFF"
     };
@@ -73,14 +88,12 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     }
     volume.annotations.push(annotation);
 
-    var select = document.getElementById('anno-list-' + panel.volume_id);
-    var option = document.createElement('option');
-    option.text = text;
-    option.value = panel.volume_id + ':' + (volume.annotations.length - 1);
-    select.add(option);
+    addToSelect(panel.volume_id, annotation, volume.annotations.length - 1);
+
+    triggerUpdate(volume);
   }
 
-  function makeAnnotation() {
+  viewer.annotate.create = function() {
     if (!viewer.active_panel)
       return;
     var panel = viewer.active_panel;
@@ -99,7 +112,6 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     
     var textarea = document.createElement('textarea');
     textarea.id = 'anno-body';
-    //textarea.value = "x: " + x + " y: " + y;
     textarea.style.width = '180pt';
     textarea.style.display = 'block';
     newbox.appendChild(textarea);
@@ -122,7 +134,7 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
     elem.innerHTML = 'Cancel';
     newbox.appendChild(elem);
 
-    // Save the note.
+    /* Add a link to save the note. */
     elem = document.getElementById('anno-save');
     elem.addEventListener("click",
                           function() {
@@ -130,59 +142,69 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewerP) {
                             closeAnnotation();
                           }, false);
 
-    // Just close the note.
+    /* Another link to close the note without saving. */
     elem = document.getElementById('anno-cancel');
     elem.addEventListener("click", closeAnnotation, false);
 
-    elem = document.getElementById('anno-list-' + panel.volume_id);
-    elem.addEventListener("click", function(e) {
-      console.log('click: ' + e.target.value);
-      var array = e.target.value.split(':');
-      var volume_id = parseInt(array[0], 10);
-      var n_anno = parseInt(array[1], 10);
-      var volume = viewer.volumes[volume_id];
-      var anno = volume.annotations[n_anno];
-      volume.setWorldCoords(anno.points[0][0],
-                            anno.points[0][1],
-                            anno.points[0][2]);
-      triggerUpdate(volume);
-    }, false);
-  }
+    textarea.focus();
+  };
 
-  function addKeyboardControls() {
-    document.addEventListener("keydown", function(event) {
-      var key = event.which;
-      
-      var keys = {
-        65: function() {
-          makeAnnotation();
-        },
-        66: function() {
-          if (!viewer.active_panel)
-            return;
-          var panel = viewer.active_panel;
-          var volume = panel.volume;
-          var date = new Date();
-          var data = {
-            date: date.toISOString(),
-            name: volume.name,
-            annotations: volume.annotations
-          };
-          var anno_str = JSON.stringify(data, null, 2);
-          var data_str = "data:text/json;charset=utf-8," +
-              encodeURIComponent(anno_str);
-          var elem = document.getElementById('anno-download');
-          elem.setAttribute("href", data_str);
-          elem.setAttribute("download", "annotation.json");
-          elem.click();
-        }
-      };
+  /* Called when a new annotation should be selected.
+   */
+  viewer.annotate.select = function(vol_id, anno_id) {
+    console.log('click: ' + vol_id + ' ' + anno_id);
+    if (vol_id >= viewer.volumes.length) {
+      return;
+    }
+    var volume = viewer.volumes[vol_id];
+    if (anno_id >= volume.annotations.length) {
+      return;
+    }
+    var pt = volume.annotations[anno_id].points[0];
+    volume.setWorldCoords(pt[0], pt[1], pt[2]);
+    triggerUpdate(volume);
+  };
 
-      if (typeof keys[key] === "function" && event.ctrlKey) {
-        event.preventDefault();
-        keys[key]();
+  /* Called when we want to download an annotations file.
+   */
+  viewer.annotate.download = function() {
+    if (!viewer.active_panel)
+      return;
+    var panel = viewer.active_panel;
+    var volume = panel.volume;
+    var date = new Date();
+    var data = {
+      date: date.toISOString(),
+      name: volume.name,
+      annotations: volume.annotations
+    };
+    var anno_str = JSON.stringify(data, null, 2);
+    var data_str = "data:text/json;charset=utf-8," +
+      encodeURIComponent(anno_str);
+    var elem = document.getElementById('anno-download');
+    elem.setAttribute("href", data_str);
+    elem.setAttribute("download", "annotation.json");
+    elem.click();
+  };
+
+  /* This function loads an annotations file, adds the appropriate
+   * entries in the selection box, and updates the slice display.
+   */
+  viewer.annotate.load = function(vol_id, file_input) {
+    BrainBrowser.loader.loadFromFile(file_input, function(json_text) {
+      var volume = viewer.volumes[vol_id];
+      var data = JSON.parse(json_text);
+      var new_annotations = data.annotations;
+      var i;
+      if (typeof volume.annotations === 'undefined') {
+        volume.annotations = [];
       }
+      for (i = 0; i < new_annotations.length; i++) {
+        volume.annotations.push(new_annotations[i]);
+        addToSelect(vol_id, new_annotations[i], i);
+      }
+      triggerUpdate(volume);
     });
-  }
+  };
 };
 
