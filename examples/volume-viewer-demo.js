@@ -822,7 +822,7 @@ $(function() {
         });
 
         container.find(".anno-list").click(function() {
-          viewer.annotate.select(vol_id, parseInt($(this).val(), 10));
+          viewer.annotate.select(vol_id, $(this).find(":selected").index());
         });
       }
     });

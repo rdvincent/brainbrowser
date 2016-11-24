@@ -60,11 +60,10 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewer) {
    * ID of an HTML element this module isn't responsible for
    * creating!
    */
-  function addToSelect(vol_id, annotation, index) {
+  function addToSelect(vol_id, annotation) {
     var select = document.getElementById('anno-list-' + vol_id);
     var option = document.createElement('option');
     option.text = annotation.name;
-    option.value = index;
     select.add(option);
   }
 
@@ -88,7 +87,7 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewer) {
     }
     volume.annotations.push(annotation);
 
-    addToSelect(panel.volume_id, annotation, volume.annotations.length - 1);
+    addToSelect(panel.volume_id, annotation);
 
     triggerUpdate(volume);
   }
@@ -194,15 +193,13 @@ BrainBrowser.VolumeViewer.modules.annotate = function(viewer) {
     BrainBrowser.loader.loadFromFile(file_input, function(json_text) {
       var volume = viewer.volumes[vol_id];
       var data = JSON.parse(json_text);
-      var new_annotations = data.annotations;
-      var i;
       if (typeof volume.annotations === 'undefined') {
         volume.annotations = [];
       }
-      for (i = 0; i < new_annotations.length; i++) {
-        volume.annotations.push(new_annotations[i]);
-        addToSelect(vol_id, new_annotations[i], i);
-      }
+      data.annotations.forEach( function ( anno ) {
+        volume.annotations.push(anno);
+        addToSelect(vol_id, anno);
+      });
       triggerUpdate(volume);
     });
   };
